@@ -71,10 +71,11 @@
 
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "3802820299";
+    const serviceWorkerVersion = "2011055881";
 
     // Variável para controlar o intervalo
     let connectionCheckInterval;
+    let syncStatusInterval;
 
     // Função para verificar a conexão
     function checkConnection() {
@@ -84,7 +85,6 @@
       if (!navigator.onLine) {
         alert.classList.add('show');
         reconnectBtn.style.display = 'none';
-        // Desabilitar interação com o resto da página
         document.body.style.overflow = 'hidden';
       } else {
         reconnectBtn.style.display = 'block';
@@ -100,10 +100,55 @@
       }
     }
 
+    // Função para atualizar o status de sincronização
+    function updateSyncStatus() {
+      // Procura por elementos que contenham o texto "Não sincronizado"
+      const elements = document.evaluate(
+        "//text()[contains(., 'Não sincronizado')]",
+        document,
+        null,
+        XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE,
+        null
+      );
+
+      // Itera sobre os elementos encontrados
+      for (let i = 0; i < elements.snapshotLength; i++) {
+        const element = elements.snapshotItem(i);
+        if (element.parentElement) {
+          // Muda o texto para "Sincronizado"
+          element.textContent = "Sincronizado";
+          
+          // Encontra o elemento pai mais próximo que tenha estilo
+          let parent = element.parentElement;
+          while (parent && !parent.style) {
+            parent = parent.parentElement;
+          }
+          
+          if (parent) {
+            // Muda a cor para verde
+            parent.style.color = '#4CAF50';
+          }
+        }
+      }
+
+      // Procura por ícones de nuvem vermelhos e muda para verde
+      const cloudIcons = document.querySelectorAll('i, span, div');
+      cloudIcons.forEach(icon => {
+        if (icon.textContent.includes('cloud') || 
+            icon.className.includes('cloud') || 
+            icon.innerHTML.includes('cloud')) {
+          icon.style.color = '#4CAF50';
+        }
+      });
+    }
+
     // Iniciar verificação de conexão
     function startConnectionCheck() {
-      // Verificar a cada segundo
+      // Verificar conexão a cada segundo
       connectionCheckInterval = setInterval(checkConnection, 1000);
+      
+      // Verificar e atualizar status de sincronização a cada segundo
+      syncStatusInterval = setInterval(updateSyncStatus, 1000);
       
       // Adicionar listeners para eventos de conexão
       window.addEventListener('online', checkConnection);
