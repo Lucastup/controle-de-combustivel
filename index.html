@@ -21,7 +21,7 @@
 
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "2066129311";
+    const serviceWorkerVersion = "3495998964";
 
     // Verificar conexão antes de qualquer requisição
     const originalFetch = window.fetch;
@@ -71,6 +71,33 @@
       window.addEventListener('offline', updateConnectionStatus);
       updateConnectionStatus();
     }
+
+    // Interceptar cliques em botões
+    document.addEventListener('click', function(e) {
+      // Verificar se é o botão de salvar requisição
+      if (e.target && (
+          e.target.innerText === 'Salvar Requisição' || 
+          e.target.innerText === 'SALVAR REQUISIÇÃO' ||
+          e.target.innerText === 'Salvar' ||
+          e.target.innerText === 'SALVAR'
+      )) {
+        if (!navigator.onLine) {
+          e.stopPropagation();
+          e.preventDefault();
+          alert('Sem conexão com a internet. Não é possível gerar tickets offline na versão web.');
+          return false;
+        }
+      }
+    }, true);
+
+    // Interceptar submissões de formulário
+    document.addEventListener('submit', function(e) {
+      if (!navigator.onLine) {
+        e.preventDefault();
+        alert('Sem conexão com a internet. Não é possível gerar tickets offline na versão web.');
+        return false;
+      }
+    }, true);
   </script>
 </head>
 <body>
