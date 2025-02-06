@@ -21,7 +21,56 @@
 
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "3642451440";
+    const serviceWorkerVersion = "2066129311";
+
+    // Verificar conexão antes de qualquer requisição
+    const originalFetch = window.fetch;
+    window.fetch = function() {
+      if (!navigator.onLine) {
+        alert('Sem conexão com a internet. Por favor, verifique sua conexão antes de continuar.');
+        return Promise.reject(new Error('Sem conexão com a internet'));
+      }
+      return originalFetch.apply(this, arguments);
+    };
+
+    // Função para verificar a conexão
+    function checkConnection() {
+      return navigator.onLine;
+    }
+
+    // Função para verificar a conexão antes de gerar ticket
+    async function checkConnectionBeforeTicket() {
+      const isOnline = checkConnection();
+      if (window.flutter_inappwebview) {
+        window.flutter_inappwebview.callHandler('onConnectionStatus', isOnline);
+      }
+      return isOnline;
+    }
+
+    // Observar mudanças na conexão
+    function setupConnectionObserver() {
+      function updateConnectionStatus() {
+        const isOnline = checkConnection();
+        const status = document.querySelector('#status');
+        if (status) {
+          if (isOnline) {
+            status.textContent = '✓ Conectado';
+            status.className = 'online';
+          } else {
+            status.textContent = '✗ Sem conexão';
+            status.className = 'offline';
+          }
+        }
+        // Notificar o Flutter sobre a mudança de status
+        if (window.flutter_inappwebview) {
+          window.flutter_inappwebview.callHandler('onConnectionStatus', isOnline);
+        }
+      }
+
+      window.addEventListener('online', updateConnectionStatus);
+      window.addEventListener('offline', updateConnectionStatus);
+      updateConnectionStatus();
+    }
   </script>
 </head>
 <body>
@@ -72,10 +121,26 @@
       .offline {
         color: #f44336;
       }
+      #offlineAlert {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background-color: #f44336;
+        color: white;
+        text-align: center;
+        padding: 10px;
+        display: none;
+        z-index: 9999;
+      }
     </style>
     <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
     <div>Carregando o aplicativo...</div>
     <div id="status"></div>
+  </div>
+
+  <div id="offlineAlert">
+    Você está offline. Algumas funcionalidades podem não estar disponíveis.
   </div>
   
   <!-- This script adds the flutter initialization JS code -->
@@ -84,21 +149,27 @@
     window.addEventListener('load', async function() {
       var loading = document.querySelector('#loading');
       var status = document.querySelector('#status');
+      var offlineAlert = document.querySelector('#offlineAlert');
 
       // Verificar status da conexão
       function updateOnlineStatus() {
         if (navigator.onLine) {
           status.textContent = '✓ Conectado';
           status.className = 'online';
+          offlineAlert.style.display = 'none';
         } else {
           status.textContent = '✗ Sem conexão';
           status.className = 'offline';
+          offlineAlert.style.display = 'block';
         }
       }
 
       window.addEventListener('online', updateOnlineStatus);
       window.addEventListener('offline', updateOnlineStatus);
       updateOnlineStatus();
+
+      // Configurar observador de conexão
+      setupConnectionObserver();
 
       // Initialize Flutter
       try {
@@ -107,7 +178,10 @@
             serviceWorkerVersion: serviceWorkerVersion,
           },
           onEntrypointLoaded: async function(engineInitializer) {
-            let appRunner = await engineInitializer.initializeEngine();
+            let appRunner = await engineInitializer.initializeEngine({
+              // Registrar função JavaScript para o Flutter
+              hostElement: document.querySelector('#flutter_target')
+            });
             await appRunner.runApp();
             loading.remove();
           }
