@@ -21,7 +21,7 @@
 
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "1755093070";
+    const serviceWorkerVersion = "3642451440";
   </script>
 </head>
 <body>
@@ -33,12 +33,14 @@
         align-items: center;
         height: 100vh;
         font-family: Arial, sans-serif;
+        flex-direction: column;
       }
       .lds-ring {
         display: inline-block;
         position: relative;
         width: 80px;
         height: 80px;
+        margin-bottom: 20px;
       }
       .lds-ring div {
         box-sizing: border-box;
@@ -59,8 +61,21 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      #status {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #666;
+      }
+      .online {
+        color: #4CAF50;
+      }
+      .offline {
+        color: #f44336;
+      }
     </style>
     <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+    <div>Carregando o aplicativo...</div>
+    <div id="status"></div>
   </div>
   
   <!-- This script adds the flutter initialization JS code -->
@@ -68,25 +83,52 @@
   <script>
     window.addEventListener('load', async function() {
       var loading = document.querySelector('#loading');
+      var status = document.querySelector('#status');
+
+      // Verificar status da conexão
+      function updateOnlineStatus() {
+        if (navigator.onLine) {
+          status.textContent = '✓ Conectado';
+          status.className = 'online';
+        } else {
+          status.textContent = '✗ Sem conexão';
+          status.className = 'offline';
+        }
+      }
+
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      updateOnlineStatus();
 
       // Initialize Flutter
       try {
         await _flutter.loader.loadEntrypoint({
           serviceWorker: {
             serviceWorkerVersion: serviceWorkerVersion,
-          }
-        }).then((engineInitializer) => {
-          return engineInitializer.initializeEngine();
-        }).then((appRunner) => {
-          return appRunner.runApp();
-        }).then(() => {
-          if (loading) {
+          },
+          onEntrypointLoaded: async function(engineInitializer) {
+            let appRunner = await engineInitializer.initializeEngine();
+            await appRunner.runApp();
             loading.remove();
           }
         });
       } catch (error) {
         console.error('Erro ao carregar o Flutter:', error);
-        loading.innerHTML = 'Erro ao carregar o aplicativo. Por favor, recarregue a página.';
+        loading.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <p style="color: #f44336;">Erro ao carregar o aplicativo</p>
+            <p>Por favor, verifique sua conexão e recarregue a página</p>
+            <button onclick="location.reload()" style="
+              padding: 10px 20px;
+              background: #0175C2;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              margin-top: 10px;
+            ">Recarregar</button>
+          </div>
+        `;
       }
     });
   </script>
