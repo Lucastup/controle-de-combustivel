@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="/Controle-de-combustivel/">
+  <base href="/controle-de-combustivel/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Sistema de Controle de Combustível">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,44 +21,72 @@
 
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "1773103011";
+    const serviceWorkerVersion = "1755093070";
   </script>
-  <!-- This script adds the flutter initialization JS code -->
-  <script src="flutter.js" defer></script>
 </head>
 <body>
+  <div id="loading">
+    <style>
+      #loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+      }
+      .lds-ring {
+        display: inline-block;
+        position: relative;
+        width: 80px;
+        height: 80px;
+      }
+      .lds-ring div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 64px;
+        height: 64px;
+        margin: 8px;
+        border: 8px solid #0175C2;
+        border-radius: 50%;
+        animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: #0175C2 transparent transparent transparent;
+      }
+      .lds-ring div:nth-child(1) { animation-delay: -0.45s; }
+      .lds-ring div:nth-child(2) { animation-delay: -0.3s; }
+      .lds-ring div:nth-child(3) { animation-delay: -0.15s; }
+      @keyframes lds-ring {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+  </div>
+  
+  <!-- This script adds the flutter initialization JS code -->
+  <script src="flutter.js" defer></script>
   <script>
-    window.addEventListener('load', function(ev) {
-      // Aguarde o carregamento do flutter.js
-      var loading = document.createElement('div');
-      loading.style.display = 'flex';
-      loading.style.justifyContent = 'center';
-      loading.style.alignItems = 'center';
-      loading.style.height = '100vh';
-      loading.innerHTML = 'Carregando...';
-      document.body.appendChild(loading);
+    window.addEventListener('load', async function() {
+      var loading = document.querySelector('#loading');
 
-      _flutter = {};
-      let flutter = _flutter;
-      
-      // Download main.dart.js
-      var scriptTag = document.createElement('script');
-      scriptTag.src = 'main.dart.js';
-      scriptTag.type = 'application/javascript';
-      document.body.appendChild(scriptTag);
-
-      // Inicializar o Flutter
-      if (flutter) {
-        flutter.loader.loadEntrypoint({
+      // Initialize Flutter
+      try {
+        await _flutter.loader.loadEntrypoint({
           serviceWorker: {
             serviceWorkerVersion: serviceWorkerVersion,
-          },
-          onEntrypointLoaded: async function(engineInitializer) {
-            let appRunner = await engineInitializer.initializeEngine();
-            await appRunner.runApp();
-            document.body.removeChild(loading);
+          }
+        }).then((engineInitializer) => {
+          return engineInitializer.initializeEngine();
+        }).then((appRunner) => {
+          return appRunner.runApp();
+        }).then(() => {
+          if (loading) {
+            loading.remove();
           }
         });
+      } catch (error) {
+        console.error('Erro ao carregar o Flutter:', error);
+        loading.innerHTML = 'Erro ao carregar o aplicativo. Por favor, recarregue a página.';
       }
     });
   </script>
