@@ -69,9 +69,10 @@
     }
   </style>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "2077857994";
+    const serviceWorkerVersion = "3748406887";
 
     // Variável para controlar o intervalo
     let connectionCheckInterval;
@@ -125,6 +126,30 @@
       });
     }
 
+    // Função para gerar PDF do ticket
+    async function generateTicketPDF(ticketData) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Configurar fonte e tamanho
+      doc.setFontSize(20);
+      doc.text('Requisição de Combustível', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(12);
+      let y = 40;
+      
+      // Adicionar dados do ticket
+      Object.entries(ticketData).forEach(([key, value]) => {
+        if (value && typeof value === 'string') {
+          doc.text(`${key}: ${value}`, 20, y);
+          y += 10;
+        }
+      });
+      
+      // Retornar o PDF como blob
+      return doc.output('blob');
+    }
+
     // Função para habilitar compartilhamento na web
     function enableWebSharing() {
       // Observa mudanças no DOM
@@ -136,32 +161,56 @@
               const shareButtons = node.querySelectorAll('button');
               shareButtons.forEach(button => {
                 if (button.textContent.includes('Compartilhar')) {
-                  // Remove o listener antigo se existir
-                  button.replaceWith(button.cloneNode(true));
-                  // Adiciona o novo listener
-                  const newButton = node.querySelector('button');
-                  if (newButton) {
-                    newButton.addEventListener('click', async (e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      
-                      // Encontra o elemento pai que contém os dados do ticket
-                      let ticketElement = button.closest('.ticket-container') || button.closest('div[style*="border"]');
-                      if (!ticketElement) return;
+                  button.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
 
-                      try {
-                        // Dispara um evento personalizado que o Flutter pode ouvir
-                        const event = new CustomEvent('webShare', {
-                          detail: {
-                            ticketId: ticketElement.getAttribute('data-ticket-id')
+                    // Encontra o elemento pai que contém os dados do ticket
+                    const ticketElement = button.closest('div[style*="border"]');
+                    if (!ticketElement) return;
+
+                    try {
+                      // Extrair dados do ticket
+                      const ticketData = {};
+                      ticketElement.querySelectorAll('div').forEach(div => {
+                        const text = div.textContent.trim();
+                        if (text && !text.includes('Compartilhar') && !text.includes('Aprovar')) {
+                          const parts = text.split(':');
+                          if (parts.length > 1) {
+                            ticketData[parts[0].trim()] = parts.slice(1).join(':').trim();
                           }
+                        }
+                      });
+
+                      // Gerar PDF
+                      const pdfBlob = await generateTicketPDF(ticketData);
+                      
+                      // Criar arquivo para compartilhar
+                      const file = new File([pdfBlob], 'requisicao.pdf', { type: 'application/pdf' });
+
+                      // Usar Web Share API
+                      if (navigator.share) {
+                        await navigator.share({
+                          files: [file],
+                          title: 'Requisição de Combustível',
+                          text: 'Compartilhar requisição'
                         });
-                        window.dispatchEvent(event);
-                      } catch (error) {
-                        console.error('Erro ao compartilhar:', error);
+                      } else {
+                        // Fallback para download direto
+                        const url = URL.createObjectURL(pdfBlob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'requisicao.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
                       }
-                    });
-                  }
+                    } catch (error) {
+                      console.error('Erro ao compartilhar:', error);
+                      alert('Erro ao compartilhar o ticket. Por favor, tente novamente.');
+                    }
+                  });
                 }
               });
             }
