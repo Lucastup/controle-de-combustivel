@@ -71,7 +71,7 @@
 
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "189936736";
+    const serviceWorkerVersion = "2077857994";
 
     // Variável para controlar o intervalo
     let connectionCheckInterval;
@@ -125,6 +125,57 @@
       });
     }
 
+    // Função para habilitar compartilhamento na web
+    function enableWebSharing() {
+      // Observa mudanças no DOM
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) { // Elemento HTML
+              // Procura por botões de compartilhar
+              const shareButtons = node.querySelectorAll('button');
+              shareButtons.forEach(button => {
+                if (button.textContent.includes('Compartilhar')) {
+                  // Remove o listener antigo se existir
+                  button.replaceWith(button.cloneNode(true));
+                  // Adiciona o novo listener
+                  const newButton = node.querySelector('button');
+                  if (newButton) {
+                    newButton.addEventListener('click', async (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      
+                      // Encontra o elemento pai que contém os dados do ticket
+                      let ticketElement = button.closest('.ticket-container') || button.closest('div[style*="border"]');
+                      if (!ticketElement) return;
+
+                      try {
+                        // Dispara um evento personalizado que o Flutter pode ouvir
+                        const event = new CustomEvent('webShare', {
+                          detail: {
+                            ticketId: ticketElement.getAttribute('data-ticket-id')
+                          }
+                        });
+                        window.dispatchEvent(event);
+                      } catch (error) {
+                        console.error('Erro ao compartilhar:', error);
+                      }
+                    });
+                  }
+                }
+              });
+            }
+          });
+        });
+      });
+
+      // Configura o observer
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+
     // Iniciar verificações
     function startChecks() {
       // Verificar conexão a cada segundo
@@ -139,6 +190,9 @@
 
       // Iniciar observação de tickets
       updateTicketSyncStatus();
+
+      // Habilitar compartilhamento na web
+      enableWebSharing();
     }
   </script>
 </head>
