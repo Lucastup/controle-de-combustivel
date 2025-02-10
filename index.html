@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="/controle-de-combustivel/">
+  <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -72,7 +72,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "3748406887";
+    const serviceWorkerVersion = "547286043";
 
     // Variável para controlar o intervalo
     let connectionCheckInterval;
@@ -299,45 +299,38 @@
     <div>Carregando o aplicativo...</div>
   </div>
   
-  <!-- This script adds the flutter initialization JS code -->
-  <script src="flutter.js" defer></script>
   <script>
-    window.addEventListener('load', async function() {
+    window.addEventListener('load', function(ev) {
+      // Download main.dart.js
+      _flutter = {};
       var loading = document.querySelector('#loading');
+      var serviceWorkerActivated = false;
+      
+      // Initialize service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('flutter_service_worker.js?v=547286043');
+        });
+      }
 
-      // Iniciar verificações
-      startChecks();
+      // Download main.dart.js
+      var scriptTag = document.createElement('script');
+      scriptTag.src = 'main.dart.js';
+      scriptTag.type = 'application/javascript';
+      document.body.append(scriptTag);
 
       // Initialize Flutter
-      try {
-        await _flutter.loader.loadEntrypoint({
-          serviceWorker: {
-            serviceWorkerVersion: serviceWorkerVersion,
-          },
-          onEntrypointLoaded: async function(engineInitializer) {
-            let appRunner = await engineInitializer.initializeEngine();
-            await appRunner.runApp();
-            loading.remove();
-          }
-        });
-      } catch (error) {
-        console.error('Erro ao carregar o Flutter:', error);
-        loading.innerHTML = `
-          <div style="text-align: center; padding: 20px;">
-            <p style="color: #f44336;">Erro ao carregar o aplicativo</p>
-            <p>Por favor, verifique sua conexão e recarregue a página</p>
-            <button onclick="location.reload()" style="
-              padding: 10px 20px;
-              background: #0175C2;
-              color: white;
-              border: none;
-              border-radius: 4px;
-              cursor: pointer;
-              margin-top: 10px;
-            ">Recarregar</button>
-          </div>
-        `;
-      }
+      _flutter.loader = flutter.loader;
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function(engineInitializer) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
+            appRunner.runApp();
+          });
+        }
+      });
     });
   </script>
 </body>
