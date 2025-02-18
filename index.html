@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <base href="/">
+  <!-- Altere o base href para "./" se o aplicativo estiver na raiz -->
+  <base href="./">
 
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
   <meta name="description" content="Sistema de Controle de Combustível">
 
   <!-- iOS meta tags & icons -->
@@ -71,8 +72,8 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    // The value below is injected by flutter build, do not touch.
-    const serviceWorkerVersion = "547286043";
+    // Valor injetado pelo build do Flutter, não altere.
+    const serviceWorkerVersion = "735781380";
 
     // Variável para controlar o intervalo
     let connectionCheckInterval;
@@ -102,24 +103,19 @@
 
     // Função para atualizar o status de sincronização no ticket
     function updateTicketSyncStatus() {
-      // Observa mudanças no DOM
       const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
-          // Procura por novos elementos adicionados
           mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) { // Elemento HTML
-              // Procura pelo texto "Não sincronizado" dentro do ticket
-              const syncText = node.querySelector('div[style*="color: rgb(244, 67, 54)"]'); // Vermelho
+            if (node.nodeType === 1) {
+              const syncText = node.querySelector('div[style*="color: rgb(244, 67, 54)"]');
               if (syncText && syncText.textContent.includes('Não sincronizado')) {
                 syncText.textContent = 'Sincronizado';
-                syncText.style.color = '#4CAF50'; // Verde
+                syncText.style.color = '#4CAF50';
               }
             }
           });
         });
       });
-
-      // Configura o observer para observar todo o documento
       observer.observe(document.body, {
         childList: true,
         subtree: true
@@ -131,14 +127,12 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       
-      // Configurar fonte e tamanho
       doc.setFontSize(20);
       doc.text('Requisição de Combustível', 105, 20, { align: 'center' });
       
       doc.setFontSize(12);
       let y = 40;
       
-      // Adicionar dados do ticket
       Object.entries(ticketData).forEach(([key, value]) => {
         if (value && typeof value === 'string') {
           doc.text(`${key}: ${value}`, 20, y);
@@ -146,31 +140,24 @@
         }
       });
       
-      // Retornar o PDF como blob
       return doc.output('blob');
     }
 
     // Função para habilitar compartilhamento na web
     function enableWebSharing() {
-      // Observa mudanças no DOM
       const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
           mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) { // Elemento HTML
-              // Procura por botões de compartilhar
+            if (node.nodeType === 1) {
               const shareButtons = node.querySelectorAll('button');
               shareButtons.forEach(button => {
                 if (button.textContent.includes('Compartilhar')) {
                   button.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     e.preventDefault();
-
-                    // Encontra o elemento pai que contém os dados do ticket
                     const ticketElement = button.closest('div[style*="border"]');
                     if (!ticketElement) return;
-
                     try {
-                      // Extrair dados do ticket
                       const ticketData = {};
                       ticketElement.querySelectorAll('div').forEach(div => {
                         const text = div.textContent.trim();
@@ -181,14 +168,8 @@
                           }
                         }
                       });
-
-                      // Gerar PDF
                       const pdfBlob = await generateTicketPDF(ticketData);
-                      
-                      // Criar arquivo para compartilhar
                       const file = new File([pdfBlob], 'requisicao.pdf', { type: 'application/pdf' });
-
-                      // Usar Web Share API
                       if (navigator.share) {
                         await navigator.share({
                           files: [file],
@@ -196,7 +177,6 @@
                           text: 'Compartilhar requisição'
                         });
                       } else {
-                        // Fallback para download direto
                         const url = URL.createObjectURL(pdfBlob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -217,8 +197,6 @@
           });
         });
       });
-
-      // Configura o observer
       observer.observe(document.body, {
         childList: true,
         subtree: true
@@ -227,20 +205,11 @@
 
     // Iniciar verificações
     function startChecks() {
-      // Verificar conexão a cada segundo
       connectionCheckInterval = setInterval(checkConnection, 1000);
-      
-      // Adicionar listeners para eventos de conexão
       window.addEventListener('online', checkConnection);
       window.addEventListener('offline', checkConnection);
-      
-      // Verificação inicial
       checkConnection();
-
-      // Iniciar observação de tickets
       updateTicketSyncStatus();
-
-      // Habilitar compartilhamento na web
       enableWebSharing();
     }
   </script>
@@ -295,42 +264,47 @@
         100% { transform: rotate(360deg); }
       }
     </style>
-    <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+    <div class="lds-ring">
+      <div></div><div></div><div></div><div></div>
+    </div>
     <div>Carregando o aplicativo...</div>
   </div>
   
   <script>
     window.addEventListener('load', function(ev) {
-      // Download main.dart.js
+      // Preparar o objeto _flutter
       _flutter = {};
-      var loading = document.querySelector('#loading');
-      var serviceWorkerActivated = false;
       
-      // Initialize service worker
+      // Registrar service worker (se disponível)
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('flutter_service_worker.js?v=547286043');
+          navigator.serviceWorker.register('flutter_service_worker.js?v=735781380');
         });
       }
 
-      // Download main.dart.js
+      // Criar a tag de script para main.dart.js
       var scriptTag = document.createElement('script');
       scriptTag.src = 'main.dart.js';
       scriptTag.type = 'application/javascript';
       document.body.append(scriptTag);
 
-      // Initialize Flutter
-      _flutter.loader = flutter.loader;
-      _flutter.loader.loadEntrypoint({
-        serviceWorker: {
-          serviceWorkerVersion: serviceWorkerVersion,
-        },
-        onEntrypointLoaded: function(engineInitializer) {
-          engineInitializer.initializeEngine().then(function(appRunner) {
-            appRunner.runApp();
-          });
-        }
-      });
+      // Aguarda o carregamento do main.dart.js para iniciar o Flutter
+      scriptTag.onload = function() {
+        _flutter.loader = flutter.loader;
+        _flutter.loader.loadEntrypoint({
+          serviceWorker: {
+            serviceWorkerVersion: serviceWorkerVersion,
+          },
+          onEntrypointLoaded: function(engineInitializer) {
+            engineInitializer.initializeEngine().then(function(appRunner) {
+              appRunner.runApp();
+            });
+          }
+        });
+      };
+
+      // Inicia as verificações de conexão e outros observers
+      startChecks();
     });
   </script>
 </body>
