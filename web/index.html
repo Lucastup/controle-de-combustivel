@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/controle-de-combustivel/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Sistema de Controle de Combustível">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Controle de Combustível">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Controle de Combustível</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    #connectionAlert {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    #connectionAlert .alert-box {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      max-width: 80%;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    #connectionAlert .icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      color: #f44336;
+    }
+    #connectionAlert .message {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: #333;
+    }
+    #connectionAlert button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      display: none;
+    }
+    #connectionAlert button:hover {
+      background-color: #45a049;
+    }
+    #connectionAlert.show {
+      display: flex;
+    }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    // The value below is injected by flutter build, do not touch.
+    const serviceWorkerVersion = "735781380";
+
+    // Variável para controlar o intervalo
+    let connectionCheckInterval;
+
+    // Função para verificar a conexão
+    function checkConnection() {
+      const alert = document.getElementById('connectionAlert');
+      const reconnectBtn = document.getElementById('reconnectBtn');
+      
+      if (!navigator.onLine) {
+        alert.classList.add('show');
+        reconnectBtn.style.display = 'none';
+        document.body.style.overflow = 'hidden';
+      } else {
+        reconnectBtn.style.display = 'block';
+      }
+    }
+
+    // Função para tentar reconectar
+    function tryReconnect() {
+      if (navigator.onLine) {
+        const alert = document.getElementById('connectionAlert');
+        alert.classList.remove('show');
+        document.body.style.overflow = 'auto';
+      }
+    }
+
+    // Função para atualizar o status de sincronização no ticket
+    function updateTicketSyncStatus() {
+      // Observa mudanças no DOM
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          // Procura por novos elementos adicionados
+          mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) { // Elemento HTML
+              // Procura pelo texto "Não sincronizado" dentro do ticket
+              const syncText = node.querySelector('div[style*="color: rgb(244, 67, 54)"]'); // Vermelho
+              if (syncText && syncText.textContent.includes('Não sincronizado')) {
+                syncText.textContent = 'Sincronizado';
+                syncText.style.color = '#4CAF50'; // Verde
+              }
+            }
+          });
+        });
+      });
+
+      // Configura o observer para observar todo o documento
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    // Função para gerar PDF do ticket
+    async function generateTicketPDF(ticketData) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Configurar fonte e tamanho
+      doc.setFontSize(20);
+      doc.text('Requisição de Combustível', 105, 20, { align: 'center' });
+      
+      doc.setFontSize(12);
+      let y = 40;
+      
+      // Adicionar dados do ticket
+      Object.entries(ticketData).forEach(([key, value]) => {
+        if (value && typeof value === 'string') {
+          doc.text(`${key}: ${value}`, 20, y);
+          y += 10;
+        }
+      });
+      
+      // Retornar o PDF como blob
+      return doc.output('blob');
+    }
+
+    // Função para habilitar compartilhamento na web
+    function enableWebSharing() {
+      // Observa mudanças no DOM
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) { // Elemento HTML
+              // Procura por botões de compartilhar
+              const shareButtons = node.querySelectorAll('button');
+              shareButtons.forEach(button => {
+                if (button.textContent.includes('Compartilhar')) {
+                  button.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    // Encontra o elemento pai que contém os dados do ticket
+                    const ticketElement = button.closest('div[style*="border"]');
+                    if (!ticketElement) return;
+
+                    try {
+                      // Extrair dados do ticket
+                      const ticketData = {};
+                      ticketElement.querySelectorAll('div').forEach(div => {
+                        const text = div.textContent.trim();
+                        if (text && !text.includes('Compartilhar') && !text.includes('Aprovar')) {
+                          const parts = text.split(':');
+                          if (parts.length > 1) {
+                            ticketData[parts[0].trim()] = parts.slice(1).join(':').trim();
+                          }
+                        }
+                      });
+
+                      // Gerar PDF
+                      const pdfBlob = await generateTicketPDF(ticketData);
+                      
+                      // Criar arquivo para compartilhar
+                      const file = new File([pdfBlob], 'requisicao.pdf', { type: 'application/pdf' });
+
+                      // Usar Web Share API
+                      if (navigator.share) {
+                        await navigator.share({
+                          files: [file],
+                          title: 'Requisição de Combustível',
+                          text: 'Compartilhar requisição'
+                        });
+                      } else {
+                        // Fallback para download direto
+                        const url = URL.createObjectURL(pdfBlob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'requisicao.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      }
+                    } catch (error) {
+                      console.error('Erro ao compartilhar:', error);
+                      alert('Erro ao compartilhar o ticket. Por favor, tente novamente.');
+                    }
+                  });
+                }
+              });
+            }
+          });
+        });
+      });
+
+      // Configura o observer
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    // Iniciar verificações
+    function startChecks() {
+      // Verificar conexão a cada segundo
+      connectionCheckInterval = setInterval(checkConnection, 1000);
+      
+      // Adicionar listeners para eventos de conexão
+      window.addEventListener('online', checkConnection);
+      window.addEventListener('offline', checkConnection);
+      
+      // Verificação inicial
+      checkConnection();
+
+      // Iniciar observação de tickets
+      updateTicketSyncStatus();
+
+      // Habilitar compartilhamento na web
+      enableWebSharing();
+    }
+  </script>
+</head>
+<body>
+  <!-- Alerta de conexão -->
+  <div id="connectionAlert">
+    <div class="alert-box">
+      <div class="icon">⚠️</div>
+      <div class="message">
+        Sem conexão com a internet!<br>
+        É necessário estar conectado para usar o sistema.
+      </div>
+      <button id="reconnectBtn" onclick="tryReconnect()">Continuar</button>
+    </div>
+  </div>
+
+  <div id="loading">
+    <style>
+      #loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+        flex-direction: column;
+      }
+      .lds-ring {
+        display: inline-block;
+        position: relative;
+        width: 80px;
+        height: 80px;
+        margin-bottom: 20px;
+      }
+      .lds-ring div {
+        box-sizing: border-box;
+        display: block;
+        position: absolute;
+        width: 64px;
+        height: 64px;
+        margin: 8px;
+        border: 8px solid #0175C2;
+        border-radius: 50%;
+        animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        border-color: #0175C2 transparent transparent transparent;
+      }
+      .lds-ring div:nth-child(1) { animation-delay: -0.45s; }
+      .lds-ring div:nth-child(2) { animation-delay: -0.3s; }
+      .lds-ring div:nth-child(3) { animation-delay: -0.15s; }
+      @keyframes lds-ring {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+    <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+    <div>Carregando o aplicativo...</div>
+  </div>
+  
+  <script>
+    window.addEventListener('load', function(ev) {
+      // Download main.dart.js
+      _flutter = {};
+      var loading = document.querySelector('#loading');
+      var serviceWorkerActivated = false;
+      
+      // Initialize service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('flutter_service_worker.js?v=735781380');
+        });
+      }
+
+      // Download main.dart.js
+      var scriptTag = document.createElement('script');
+      scriptTag.src = 'main.dart.js';
+      scriptTag.type = 'application/javascript';
+      document.body.append(scriptTag);
+
+      // Initialize Flutter
+      _flutter.loader = flutter.loader;
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function(engineInitializer) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
+            appRunner.runApp();
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
